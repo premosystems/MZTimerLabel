@@ -27,7 +27,7 @@
 // THE SOFTWARE.
 
 #import "MZTimerLabel.h"
-
+#import "MZTimer.h"
 
 #define kDefaultTimeFormat  @"HH:mm:ss"
 #define kHourFormatReplace  @"!!!*"
@@ -37,14 +37,13 @@
 
 @interface MZTimerLabel(){
     
-    NSTimeInterval timeUserValue;
-    NSDate *startCountDate;
+    //NSTimeInterval timeUserValue;
+    //NSDate *self.timer.startCountDate;
     NSDate *pausedTime;
     NSDate *date1970;
-    NSDate *timeToCountOff;
+    //NSDate *timeToCountOff;
 }
 
-@property (strong) NSTimer *timer;
 @property (nonatomic,strong) NSDateFormatter *dateFormatter;
 
 - (void)setup;
@@ -58,33 +57,23 @@
 
 @synthesize timeFormat = _timeFormat;
 
-- (void)dealloc {
-    if (_timer) {
-        [_timer invalidate];
-    }
-}
-
-- (id)initWithTimerType:(MZTimerLabelType)theType {
-    return [self initWithFrame:CGRectZero label:nil andTimerType:theType];
-}
-
-- (id)initWithLabel:(UILabel *)theLabel andTimerType:(MZTimerLabelType)theType {
-    return [self initWithFrame:CGRectZero label:theLabel andTimerType:theType];
+- (id)init {
+    return [self initWithFrame:CGRectZero label:nil andTimer:[MZTimer sharedTimer]];
 }
 
 - (id)initWithLabel:(UILabel*)theLabel {
-    return [self initWithFrame:CGRectZero label:theLabel andTimerType:kDefaultTimerType];
+    return [self initWithFrame:CGRectZero label:theLabel andTimer:[MZTimer sharedTimer]];
 }
 
 - (id)initWithFrame:(CGRect)frame {
-    return [self initWithFrame:frame label:nil andTimerType:kDefaultTimerType];
+    return [self initWithFrame:frame label:nil andTimer:[MZTimer sharedTimer]];
 }
 
--(id)initWithFrame:(CGRect)frame label:(UILabel*)theLabel andTimerType:(MZTimerLabelType)theType {
+-(id)initWithFrame:(CGRect)frame label:(UILabel*)theLabel andTimer:(MZTimer*)timer {
     self = [super initWithFrame:frame];
     if (self) {
         self.timeLabel = theLabel;
-        self.timerType = theType;
+        self.timer = timer;
         [self setup];
     }
     return self;
@@ -94,54 +83,40 @@
 {
 	self = [super initWithCoder:aDecoder];
 	if (self) {
+        self.timer = [MZTimer sharedTimer];
+        self.timeLabel = self;
         [self setup];
 	}
 	return self;
 }
 
+#pragma mark - Lifecycle -
+
+- (void) setup
+{
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(updateLabel) name:kMZTimer_UpdatedNotification object:nil];
+}
+
+- (void) tearDown
+{
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+}
+
 #pragma mark - Cleanup
 
 - (void) removeFromSuperview {
-    if (_timer) {
-        [_timer invalidate];
-        _timer = nil;
-    }
     
+    [self tearDown];
     [super removeFromSuperview];
+    
+}
+
+- (void) dealloc
+{
+    [self tearDown];
 }
 
 #pragma mark - Getter and Setter Method
-
-- (void)setStopWatchTime:(NSTimeInterval)time{
-    
-    timeUserValue = (time < 0) ? 0 : time;
-    if(timeUserValue > 0){
-        startCountDate = [[NSDate date] dateByAddingTimeInterval:-timeUserValue];
-        pausedTime = [NSDate date];
-        [self updateLabel];
-    }
-}
-
-- (void)setCountDownTime:(NSTimeInterval)time{
-    
-    timeUserValue = (time < 0)? 0 : time;
-    timeToCountOff = [date1970 dateByAddingTimeInterval:timeUserValue];
-    [self updateLabel];
-}
-
--(void)setCountDownToDate:(NSDate*)date{
-    NSTimeInterval timeLeft = (int)[date timeIntervalSinceDate:[NSDate date]];
-    
-    if (timeLeft > 0) {
-        timeUserValue = timeLeft;
-        timeToCountOff = [date1970 dateByAddingTimeInterval:timeLeft];
-    }else{
-        timeUserValue = 0;
-        timeToCountOff = [date1970 dateByAddingTimeInterval:0];
-    }
-    [self updateLabel];
-
-}
 
 - (void)setTimeFormat:(NSString *)timeFormat{
     
@@ -181,27 +156,11 @@
 }
 
 
--(void)addTimeCountedByTime:(NSTimeInterval)timeToAdd
-{
-    if (_timerType == MZTimerLabelTypeTimer) {
-        [self setCountDownTime:timeToAdd + timeUserValue];
-    }else if (_timerType == MZTimerLabelTypeStopWatch) {
-        NSDate *newStartDate = [startCountDate dateByAddingTimeInterval:-timeToAdd];
-        if([[NSDate date] timeIntervalSinceDate:newStartDate] <= 0) {
-            //prevent less than 0
-            startCountDate = [NSDate date];
-        }else{
-            startCountDate = newStartDate;
-        }
-    }
-    [self updateLabel];
-}
-
 
 - (NSTimeInterval)getTimeCounted
 {
-    if(!startCountDate) return 0;
-    NSTimeInterval countedTime = [[NSDate date] timeIntervalSinceDate:startCountDate];
+    if(!self.timer.startCountDate) return 0;
+    NSTimeInterval countedTime = [[NSDate date] timeIntervalSinceDate:self.timer.startCountDate];
     
     if(pausedTime != nil){
         NSTimeInterval pauseCountedTime = [[NSDate date] timeIntervalSinceDate:pausedTime];
@@ -212,8 +171,8 @@
 
 - (NSTimeInterval)getTimeRemaining {
     
-    if (_timerType == MZTimerLabelTypeTimer) {
-        return timeUserValue - [self getTimeCounted];
+    if (self.timer.timerType == MZTimerLabelTypeTimer) {
+        return self.timer.timeUserValue - [self getTimeCounted];
     }
     
     return 0;
@@ -221,8 +180,8 @@
 
 - (NSTimeInterval)getCountDownTime {
     
-    if (_timerType == MZTimerLabelTypeTimer) {
-        return timeUserValue;
+    if (self.timer.timerType == MZTimerLabelTypeTimer) {
+        return self.timer.timeUserValue;
     }
     
     return 0;
@@ -233,120 +192,54 @@
     [self updateLabel];
 }
 
-#pragma mark - Timer Control Method
+-(void) updateLabel {
 
-
--(void)start{
-    
-    if (_timer) {
-        [_timer invalidate];
-        _timer = nil;
-    }
-    
-    if ([self.timeFormat rangeOfString:@"SS"].location != NSNotFound) {
-        _timer = [NSTimer scheduledTimerWithTimeInterval:kDefaultFireIntervalHighUse target:self selector:@selector(updateLabel) userInfo:nil repeats:YES];
-    }else{
-        _timer = [NSTimer scheduledTimerWithTimeInterval:kDefaultFireIntervalNormal target:self selector:@selector(updateLabel) userInfo:nil repeats:YES];
-    }
-    [[NSRunLoop currentRunLoop] addTimer:_timer forMode:NSRunLoopCommonModes];
-    
-    if(startCountDate == nil){
-        startCountDate = [NSDate date];
-        
-        if (self.timerType == MZTimerLabelTypeStopWatch && timeUserValue > 0) {
-            startCountDate = [startCountDate dateByAddingTimeInterval:-timeUserValue];
-        }
-    }
-    if(pausedTime != nil){
-        NSTimeInterval countedTime = [pausedTime timeIntervalSinceDate:startCountDate];
-        startCountDate = [[NSDate date] dateByAddingTimeInterval:-countedTime];
-        pausedTime = nil;
-    }
-    
-    _counting = YES;
-    [_timer fire];
-}
-
-#if NS_BLOCKS_AVAILABLE
--(void)startWithEndingBlock:(void(^)(NSTimeInterval))end{
-    self.endedBlock = end;
-    [self start];
-}
-#endif
-    
--(void)pause{
-	if(_counting){
-	    [_timer invalidate];
-	    _timer = nil;
-	    _counting = NO;
-	    pausedTime = [NSDate date];		
-	}
-}
-
--(void)reset{
-    pausedTime = nil;
-    timeUserValue = (self.timerType == MZTimerLabelTypeStopWatch)? 0 : timeUserValue;
-    startCountDate = (self.counting)? [NSDate date] : nil;
-    [self updateLabel];
-}
-
-
-#pragma mark - Private method
-
--(void)setup{
-    date1970 = [NSDate dateWithTimeIntervalSince1970:0];
-    [self updateLabel];
-}
-
-
--(void)updateLabel{
-
-    NSTimeInterval timeDiff = [[NSDate date] timeIntervalSinceDate:startCountDate];
+    NSTimeInterval timeDiff = [[NSDate date] timeIntervalSinceDate:self.timer.startCountDate];
     NSDate *timeToShow = [NSDate date];
     BOOL timerEnded = false;
     
     /***MZTimerLabelTypeStopWatch Logic***/
     
-    if(_timerType == MZTimerLabelTypeStopWatch){
+    if(self.timer.timerType == MZTimerLabelTypeStopWatch){
         
-        if (_counting) {
+        if (self.timer.counting) {
             timeToShow = [date1970 dateByAddingTimeInterval:timeDiff];
         }else{
-            timeToShow = [date1970 dateByAddingTimeInterval:(!startCountDate)?0:timeDiff];
+            timeToShow = [date1970 dateByAddingTimeInterval:(!self.timer.startCountDate)?0:timeDiff];
         }
         
         if([_delegate respondsToSelector:@selector(timerLabel:countingTo:timertype:)]){
-            [_delegate timerLabel:self countingTo:timeDiff timertype:_timerType];
+            [_delegate timerLabel:self countingTo:timeDiff timertype:self.timer.timerType];
         }
     
     }else{
         
     /***MZTimerLabelTypeTimer Logic***/
         
-        if (_counting) {
+        if (self.timer.counting) {
             
             if([_delegate respondsToSelector:@selector(timerLabel:countingTo:timertype:)]){
-                NSTimeInterval timeLeft = timeUserValue - timeDiff;
-                [_delegate timerLabel:self countingTo:timeLeft timertype:_timerType];
+                NSTimeInterval timeLeft = self.timer.timeUserValue - timeDiff;
+                [_delegate timerLabel:self countingTo:timeLeft timertype:self.timer.timerType];
             }
                         
-            if(timeDiff >= timeUserValue){
-                [self pause];
+            if(timeDiff >= self.timer.timeUserValue){
+                
                 timeToShow = [date1970 dateByAddingTimeInterval:0];
-                startCountDate = nil;
+                self.timer.startCountDate = nil;
                 timerEnded = true;
             }else{
-                timeToShow = [timeToCountOff dateByAddingTimeInterval:(timeDiff*-1)]; //added 0.999 to make it actually counting the whole first second
+                timeToShow = [self.timer.timeToCountOff dateByAddingTimeInterval:(timeDiff*-1)]; //added 0.999 to make it actually counting the whole first second
             }
             
         }else{
-            timeToShow = timeToCountOff;
+            timeToShow = self.timer.timeToCountOff;
         }
     }
 
     //setting text value
     if ([_delegate respondsToSelector:@selector(timerLabel:customTextToDisplayAtTime:)]) {
-        NSTimeInterval atTime = (_timerType == MZTimerLabelTypeStopWatch) ? timeDiff : ((timeUserValue - timeDiff) < 0 ? 0 : (timeUserValue - timeDiff));
+        NSTimeInterval atTime = (self.timer.timerType == MZTimerLabelTypeStopWatch) ? timeDiff : ((self.timer.timeUserValue - timeDiff) < 0 ? 0 : (self.timer.timeUserValue - timeDiff));
         NSString *customtext = [_delegate timerLabel:self customTextToDisplayAtTime:atTime];
         if ([customtext length]) {
             self.timeLabel.text = customtext;
@@ -362,7 +255,7 @@
             beyondFormat = [beyondFormat stringByReplacingOccurrencesOfString:@"H" withString:kHourFormatReplace];
             self.dateFormatter.dateFormat = beyondFormat;
             
-            int hours = (_timerType == MZTimerLabelTypeStopWatch)? ([self getTimeCounted] / 3600) : ([self getTimeRemaining] / 3600);
+            int hours = (self.timer.timerType == MZTimerLabelTypeStopWatch)? ([self getTimeCounted] / 3600) : ([self getTimeRemaining] / 3600);
             NSString *formmattedDate = [self.dateFormatter stringFromDate:timeToShow];
             NSString *beyondedDate = [formmattedDate stringByReplacingOccurrencesOfString:kHourFormatReplace withString:[NSString stringWithFormat:@"%02d",hours]];
             
@@ -393,16 +286,16 @@
     //0.5.1 moved below to the bottom
     if(timerEnded) {
         if([_delegate respondsToSelector:@selector(timerLabel:finshedCountDownTimerWithTime:)]){
-            [_delegate timerLabel:self finshedCountDownTimerWithTime:timeUserValue];
+            [_delegate timerLabel:self finshedCountDownTimerWithTime:self.timer.timeUserValue];
         }
         
 #if NS_BLOCKS_AVAILABLE
         if(_endedBlock != nil){
-            _endedBlock(timeUserValue);
+            _endedBlock(self.timer.timeUserValue);
         }
 #endif
         if(_resetTimerAfterFinish){
-            [self reset];
+           
         }
         
     }
