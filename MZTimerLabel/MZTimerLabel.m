@@ -29,11 +29,14 @@
 #import "MZTimerLabel.h"
 #import "MZTimer.h"
 
-#define kDefaultTimeFormat  @"HH:mm:ss"
+//#define kDefaultTimeFormat  @"HH:mm:ss"
+//#define kDefaultTimeFormat  @"mm:ss"
 #define kHourFormatReplace  @"!!!*"
 #define kDefaultFireIntervalNormal  0.1
 #define kDefaultFireIntervalHighUse  0.01
 #define kDefaultTimerType MZTimerLabelTypeStopWatch
+
+static NSString *_defaultTimeFormat;
 
 @interface MZTimerLabel(){
     
@@ -56,6 +59,11 @@
 @implementation MZTimerLabel
 
 @synthesize timeFormat = _timeFormat;
+
++ (void) setDefaultTimeFormat:(NSString*)format
+{
+    _defaultTimeFormat = format;
+}
 
 - (id)init {
     return [self initWithFrame:CGRectZero label:nil andTimer:[MZTimer sharedTimer]];
@@ -94,6 +102,10 @@
 
 - (void) setup
 {
+    if (!_defaultTimeFormat) {
+        _defaultTimeFormat = @"HH:mm:ss";
+    }
+    
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(updateLabel) name:kMZTimer_UpdatedNotification object:nil];
 }
 
@@ -130,7 +142,7 @@
 - (NSString*)timeFormat
 {
     if ([_timeFormat length] == 0 || _timeFormat == nil) {
-        _timeFormat = kDefaultTimeFormat;
+        _timeFormat = _defaultTimeFormat;
     }
     
     return _timeFormat;

@@ -58,7 +58,7 @@ NSString *const kMZTimer_UpdatedNotification = @"kMZTimer_UpdatedNotification";
 
 @implementation MZTimer
 
-@synthesize timeFormat = _timeFormat;
+
 
 + (MZTimer*) sharedTimer
 {
@@ -119,34 +119,7 @@ NSString *const kMZTimer_UpdatedNotification = @"kMZTimer_UpdatedNotification";
 
 }
 
-- (void)setTimeFormat:(NSString *)timeFormat{
-    
-    if ([timeFormat length] != 0) {
-        _timeFormat = timeFormat;
-        self.dateFormatter.dateFormat = timeFormat;
-    }
-    [self postUpdateNotification];
-}
 
-- (NSString*)timeFormat
-{
-    if ([_timeFormat length] == 0 || _timeFormat == nil) {
-        _timeFormat = kDefaultTimeFormat;
-    }
-    
-    return _timeFormat;
-}
-
-- (NSDateFormatter*)dateFormatter{
-    
-    if (_dateFormatter == nil) {
-        _dateFormatter = [[NSDateFormatter alloc] init];
-        _dateFormatter.locale = [[NSLocale alloc] initWithLocaleIdentifier:@"en_GB"];
-        [_dateFormatter setTimeZone:[NSTimeZone timeZoneWithName:@"GMT"]];
-        _dateFormatter.dateFormat = self.timeFormat;
-    }
-    return _dateFormatter;
-}
 
 
 -(void)addTimeCountedByTime:(NSTimeInterval)timeToAdd
@@ -211,7 +184,7 @@ NSString *const kMZTimer_UpdatedNotification = @"kMZTimer_UpdatedNotification";
         self.timer = nil;
     }
     
-    if ([self.timeFormat rangeOfString:@"SS"].location != NSNotFound) {
+    if (self.timerType == MZTimerTypeStopWatch) {
         self.timer = [NSTimer scheduledTimerWithTimeInterval:kDefaultFireIntervalHighUse target:self selector:@selector(postUpdateNotification) userInfo:nil repeats:YES];
     }else{
         self.timer = [NSTimer scheduledTimerWithTimeInterval:kDefaultFireIntervalNormal target:self selector:@selector(postUpdateNotification) userInfo:nil repeats:YES];

@@ -70,12 +70,6 @@ extern NSString *const kMZTimer_UpdatedNotification;
 /*Delegate for finish of countdown timer */
 @property (nonatomic,weak) id<MZTimerDelegate> delegate;
 
-/*Time format wish to display in label*/
-@property (nonatomic,copy) NSString *timeFormat;
-
-/*Target label obejct, default self if you do not initWithLabel nor set*/
-//@property (nonatomic,strong) UILabel *timeLabel;
-
 /*Used for replace text in range */
 @property (nonatomic, assign) NSRange textRange;
 
@@ -125,9 +119,6 @@ extern NSString *const kMZTimer_UpdatedNotification;
 - (NSTimeInterval)getTimeCounted;
 - (NSTimeInterval)getTimeRemaining;
 - (NSTimeInterval)getCountDownTime;
-
-
-
 
 
 @end
