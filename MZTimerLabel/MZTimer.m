@@ -78,7 +78,7 @@ NSString *const kMZTimer_UpdatedNotification = @"kMZTimer_UpdatedNotification";
 
 - (id)initWithTimerType:(MZTimerType)theType {
     if (self) {
-       
+        
         self.timerType = theType;
         [self setup];
     }
@@ -116,7 +116,7 @@ NSString *const kMZTimer_UpdatedNotification = @"kMZTimer_UpdatedNotification";
         self.timeToCountOff = [date1970 dateByAddingTimeInterval:0];
     }
     [self postUpdateNotification];
-
+    
 }
 
 
@@ -214,14 +214,14 @@ NSString *const kMZTimer_UpdatedNotification = @"kMZTimer_UpdatedNotification";
     [self start];
 }
 #endif
-    
+
 -(void)pause{
-	if(_counting){
-	    [_timer invalidate];
-	    _timer = nil;
-	    _counting = NO;
-	    pausedTime = [NSDate date];		
-	}
+    if(_counting){
+        [_timer invalidate];
+        _timer = nil;
+        _counting = NO;
+        pausedTime = [NSDate date];
+    }
 }
 
 -(void)reset{
@@ -241,8 +241,33 @@ NSString *const kMZTimer_UpdatedNotification = @"kMZTimer_UpdatedNotification";
 
 
 -(void) postUpdateNotification {
+    
+    NSTimeInterval timeDiff = [[NSDate date] timeIntervalSinceDate:self.startCountDate];
+   
+    BOOL timerEnded = NO;
+    if(timeDiff >= self.timeUserValue){
+        
+        self.startCountDate = nil;
+        timerEnded = YES;
+        [self.timer invalidate];
+    } else {
+        
+        [[NSNotificationCenter defaultCenter] postNotificationName:kMZTimer_UpdatedNotification object:self];
+    }
+    
+    if(timerEnded) {
+        if([_delegate respondsToSelector:@selector(timerLabel:finshedCountDownTimerWithTime:)]){
+            [_delegate timerLabel:self finshedCountDownTimerWithTime:self.timeUserValue];
+        }
+        
+#if NS_BLOCKS_AVAILABLE
+        if(_endedBlock != nil){
+            _endedBlock(self.timeUserValue);
+        }
+#endif
+        
+    }
 
-    [[NSNotificationCenter defaultCenter] postNotificationName:kMZTimer_UpdatedNotification object:self];
     
 }
 
