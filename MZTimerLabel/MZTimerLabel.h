@@ -95,6 +95,7 @@ typedef enum{
 @property (copy) void (^endedBlock)(NSTimeInterval);
 #endif
 
++ (void) setDefaultTimeFormat:(NSString*)format;
 
 /*--------Init methods to choose*/
 -(id)init;
