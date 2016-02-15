@@ -119,7 +119,7 @@ extern NSString *const kMZTimer_UpdatedNotification;
 - (NSTimeInterval)getTimeCounted;
 - (NSTimeInterval)getTimeRemaining;
 - (NSTimeInterval)getCountDownTime;
-
+- (NSDate*) finishDate;
 
 @end
 

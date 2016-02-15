@@ -37,6 +37,8 @@
 
 NSString *const kMZTimer_UpdatedNotification = @"kMZTimer_UpdatedNotification";
 
+static MZTimer *_sharedTimer;
+
 @interface MZTimer(){
     
     //NSTimeInterval timeUserValue;
@@ -62,12 +64,13 @@ NSString *const kMZTimer_UpdatedNotification = @"kMZTimer_UpdatedNotification";
 
 + (MZTimer*) sharedTimer
 {
-    static MZTimer *sharedTimer = nil;
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        sharedTimer = [[MZTimer alloc] initWithTimerType:MZTimerTypeTimer];
-    });
-    return sharedTimer;
+    if (!_sharedTimer) {
+        @synchronized(self) {
+            _sharedTimer = [[MZTimer alloc] initWithTimerType:MZTimerTypeTimer];
+        }
+    }
+    
+    return _sharedTimer;
 }
 
 - (void)dealloc {
@@ -94,6 +97,7 @@ NSString *const kMZTimer_UpdatedNotification = @"kMZTimer_UpdatedNotification";
     if(self.timeUserValue > 0){
         self.startCountDate = [[NSDate date] dateByAddingTimeInterval:-self.timeUserValue];
         pausedTime = [NSDate date];
+        
         [self postUpdateNotification];
     }
 }
@@ -102,7 +106,10 @@ NSString *const kMZTimer_UpdatedNotification = @"kMZTimer_UpdatedNotification";
     
     self.timeUserValue = (time < 0)? 0 : time;
     self.timeToCountOff = [date1970 dateByAddingTimeInterval:self.timeUserValue];
-    [self postUpdateNotification];
+    
+    if (self.counting) {
+        [self postUpdateNotification];
+    }
 }
 
 -(void)setCountDownToDate:(NSDate*)date{
@@ -115,11 +122,11 @@ NSString *const kMZTimer_UpdatedNotification = @"kMZTimer_UpdatedNotification";
         self.timeUserValue = 0;
         self.timeToCountOff = [date1970 dateByAddingTimeInterval:0];
     }
-    [self postUpdateNotification];
     
+    if (self.counting) {
+        [self postUpdateNotification];
+    }
 }
-
-
 
 
 -(void)addTimeCountedByTime:(NSTimeInterval)timeToAdd
@@ -167,6 +174,11 @@ NSString *const kMZTimer_UpdatedNotification = @"kMZTimer_UpdatedNotification";
     }
     
     return 0;
+}
+
+- (NSDate*) finishDate
+{
+    return [self.startCountDate dateByAddingTimeInterval:self.timeUserValue];
 }
 
 - (void)setShouldCountBeyondHHLimit:(BOOL)shouldCountBeyondHHLimit {
@@ -236,23 +248,24 @@ NSString *const kMZTimer_UpdatedNotification = @"kMZTimer_UpdatedNotification";
 
 -(void)setup{
     date1970 = [NSDate dateWithTimeIntervalSince1970:0];
-    [self postUpdateNotification];
 }
 
 
 -(void) postUpdateNotification {
     
     NSTimeInterval timeDiff = [[NSDate date] timeIntervalSinceDate:self.startCountDate];
-   
+    
     BOOL timerEnded = NO;
     if(timeDiff >= self.timeUserValue){
         
         self.startCountDate = nil;
         timerEnded = YES;
         [self.timer invalidate];
+        
     } else {
         
-        [[NSNotificationCenter defaultCenter] postNotificationName:kMZTimer_UpdatedNotification object:self];
+        NSDate *date = [[NSDate date] copy];
+        [[NSNotificationCenter defaultCenter] postNotificationName:kMZTimer_UpdatedNotification object:date];
     }
     
     if(timerEnded) {
@@ -267,7 +280,6 @@ NSString *const kMZTimer_UpdatedNotification = @"kMZTimer_UpdatedNotification";
 #endif
         
     }
-
     
 }
 
