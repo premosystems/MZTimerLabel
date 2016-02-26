@@ -95,6 +95,7 @@ extern NSString *const kMZTimer_UpdatedNotification;
 @property (copy) void (^endedBlock)(NSTimeInterval);
 #endif
 
++ (void) setSharedTimer:(MZTimer*)timer;
 + (MZTimer*) sharedTimer;
 
 /*--------Init methods to choose*/

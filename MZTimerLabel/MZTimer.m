@@ -60,6 +60,10 @@ static MZTimer *_sharedTimer;
 
 @implementation MZTimer
 
++ (void) setSharedTimer:(MZTimer*)timer
+{
+    _sharedTimer = timer;
+}
 
 
 + (MZTimer*) sharedTimer
